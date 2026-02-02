@@ -1,0 +1,9 @@
+{
+  "name": "SAR Earthdata Viewer",
+  "short_name": "SAR-View",
+  "start_url": "/sar-pwa-viewer/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#202020",
+  "icons": [{ "src": "icon.png", "sizes": "192x192", "type": "image/png" }]
+}
