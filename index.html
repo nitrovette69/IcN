@@ -1,1 +1,278 @@
-<!DOCTYPE html>\n<html lang="en">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>SAR Image Viewer</title>\n    <style>\n        body { margin: 0; font-family: Arial, sans-serif; }\n        #canvas { border: 1px solid black; }\n        #controls { margin: 10px; }\n    </style>\n</head>\n<body>\n    <div id="controls">\n        <input type="file" id="fileInput">\n        <button id="panButton">Pan</button>\n        <button id="zoomInButton">Zoom In</button>\n        <button id="zoomOutButton">Zoom Out</button>\n    </div>\n    <canvas id="canvas"></canvas>\n    <script>\n        const fileInput = document.getElementById('fileInput');\n        const canvas = document.getElementById('canvas');\n        const ctx = canvas.getContext('2d');\n        let img = new Image();\n        let scale = 1;\n        let posX = 0, posY = 0;\n\n        fileInput.addEventListener('change', (event) => {\n            const file = event.target.files[0];\n            const reader = new FileReader();\n            reader.onload = (e) => {\n                img.src = e.target.result;\n            };\n            reader.readAsDataURL(file);\n        });\n\n        img.onload = () => {\n            canvas.width = img.width * scale;\n            canvas.height = img.height * scale;\n            ctx.drawImage(img, posX, posY, img.width * scale, img.height * scale);\n        };\n\n        function draw() {\n            ctx.clearRect(0, 0, canvas.width, canvas.height);\n            ctx.drawImage(img, posX, posY, img.width * scale, img.height * scale);\n        }\n\n        document.getElementById('panButton').addEventListener('click', () => {\n            // Implement pan functionality here\n        });\n\n        document.getElementById('zoomInButton').addEventListener('click', () => {\n            scale *= 1.2;\n            draw();\n        });\n\n        document.getElementById('zoomOutButton').addEventListener('click', () => {\n            scale /= 1.2;\n            draw();\n        });\n    <\/script>\n</body>\n</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#202020">
+    <meta name="description" content="SAR Earthdata Viewer - Satellite Image Viewer PWA">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icon.png">
+    <title>SAR Image Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        
+        #header {
+            background-color: #202020;
+            padding: 15px;
+            border-bottom: 2px solid #404040;
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        #controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        
+        input[type="file"],
+        button {
+            padding: 10px 15px;
+            background-color: #333333;
+            color: white;
+            border: 1px solid #555555;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #404040;
+        }
+        
+        button:active {
+            background-color: #505050;
+        }
+        
+        input[type="file"]::file-selector-button {
+            padding: 8px 15px;
+            background-color: #404040;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        #canvasContainer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: calc(100vh - 150px);
+            background-color: #0a0a0a;
+            overflow: auto;
+        }
+        
+        #canvas {
+            max-width: 100%;
+            max-height: 100%;
+            border: 1px solid #555555;
+            cursor: grab;
+        }
+        
+        #canvas:active {
+            cursor: grabbing;
+        }
+        
+        #info {
+            padding: 10px;
+            background-color: #202020;
+            font-size: 12px;
+            border-top: 1px solid #404040;
+        }
+        
+        .status {
+            display: inline-block;
+            margin-right: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>🛰️ SAR Image Viewer</h1>
+        <div id="controls">
+            <input type="file" id="fileInput" accept="image/*" title="Select a SAR image file">
+            <button id="panButton" title="Pan mode (click and drag)">🖱️ Pan</button>
+            <button id="zoomInButton" title="Zoom in">🔍+ Zoom In</button>
+            <button id="zoomOutButton" title="Zoom out">🔍- Zoom Out</button>
+            <button id="resetButton" title="Reset view">↺ Reset</button>
+            <button id="installButton" style="display: none;">📱 Install App</button>
+        </div>
+    </div>
+    
+    <div id="canvasContainer">
+        <canvas id="canvas"></canvas>
+    </div>
+    
+    <div id="info">
+        <span class="status">Mode: <strong id="modeDisplay">Select Image</strong></span>
+        <span class="status">Zoom: <strong id="zoomDisplay">100%</strong></span>
+        <span class="status">Position: <strong id="posDisplay">0, 0</strong></span>
+    </div>
+    
+    <script>
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(registration => console.log('Service Worker registered'))
+                .catch(error => console.log('Service Worker registration failed:', error));
+        }
+        
+        // Handle PWA install prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installButton').style.display = 'block';
+        });
+        
+        document.getElementById('installButton').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response to the install prompt: ${outcome}`);
+                deferredPrompt = null;
+            }
+        });
+        
+        // Canvas and Image Management
+        const fileInput = document.getElementById('fileInput');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const modeDisplay = document.getElementById('modeDisplay');
+        const zoomDisplay = document.getElementById('zoomDisplay');
+        const posDisplay = document.getElementById('posDisplay');
+        
+        let img = new Image();
+        let scale = 1;
+        let posX = 0, posY = 0;
+        let isPanning = false;
+        let panStartX = 0, panStartY = 0;
+        let mode = 'select';
+        
+        // Set canvas size to window size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight - 150;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // File input handler
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+                modeDisplay.textContent = 'Loading image...';
+            }
+        });
+        
+        // Image load handler
+        img.onload = () => {
+            scale = 1;
+            posX = 0;
+            posY = 0;
+            resizeCanvas();
+            draw();
+            modeDisplay.textContent = 'Image loaded';
+        };
+        
+        // Draw function
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (img.src) {
+                ctx.drawImage(
+                    img,
+                    posX,
+                    posY,
+                    img.width * scale,
+                    img.height * scale
+                );
+            }
+            
+            // Update display
+            zoomDisplay.textContent = (scale * 100).toFixed(0) + '%';
+            posDisplay.textContent = Math.round(posX) + ', ' + Math.round(posY);
+        }
+        
+        // Pan button
+        document.getElementById('panButton').addEventListener('click', () => {
+            mode = mode === 'pan' ? 'select' : 'pan';
+            modeDisplay.textContent = mode === 'pan' ? 'Pan mode' : 'Select mode';
+            document.getElementById('panButton').style.opacity = mode === 'pan' ? '0.7' : '1';
+        });
+        
+        // Zoom controls
+        document.getElementById('zoomInButton').addEventListener('click', () => {
+            scale *= 1.2;
+            draw();
+        });
+        
+        document.getElementById('zoomOutButton').addEventListener('click', () => {
+            scale /= 1.2;
+            draw();
+        });
+        
+        // Reset button
+        document.getElementById('resetButton').addEventListener('click', () => {
+            scale = 1;
+            posX = 0;
+            posY = 0;
+            draw();
+            modeDisplay.textContent = 'Reset';
+        });
+        
+        // Mouse events for panning
+        canvas.addEventListener('mousedown', (e) => {
+            if (mode === 'pan' && img.src) {
+                isPanning = true;
+                panStartX = e.clientX - posX;
+                panStartY = e.clientY - posY;
+            }
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (isPanning) {
+                posX = e.clientX - panStartX;
+                posY = e.clientY - panStartY;
+                draw();
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isPanning = false;
+        });
+        
+        // Wheel zoom
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (img.src) {
+                const zoomSpeed = 0.1;
+                scale += e.deltaY > 0 ? -zoomSpeed : zoomSpeed;
+                scale = Math.max(0.1, scale);
+                draw();
+            }
+        }, { passive: false });
+    <\/script>
+</body>
+</html>
