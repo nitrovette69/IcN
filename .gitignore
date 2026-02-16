@@ -1,0 +1,13 @@
+.gitignore
+*.log
+*.swp
+*.swo
+*~
+node_modules/
+dist/
+build/
+.DS_Store
+.env
+.env.local
+thumbnail_cache/
+offline_images/
