@@ -1,2 +1,6 @@
 - name: Npm build to gh-pages
   uses: diy-pwa/npm-build-2-gh-pages@v1.13
+jobs:
+- job: ParallelTesting
+  strategy:
+    parallel: 2
